@@ -1,0 +1,72 @@
+services:
+
+  mysql:
+    image: mysql:5.7
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
+      MYSQL_DATABASE:      cafe_db
+      MYSQL_USER:          ${DB_USER}
+      MYSQL_PASSWORD:      ${DB_PASS}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - cafe_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_ROOT_PASS}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    networks:
+      - cafe_network
+
+  cafe-app-backend:
+    build:
+      context: ./Cafe-Management-System-BE
+      dockerfile: Dockerfile
+    container_name: cafe-app-backend
+    restart: always
+    environment:
+      DB_URL:            jdbc:mysql://mysql:3306/cafe_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      DB_USER:           ${DB_USER}
+      DB_PASS:           ${DB_PASS}
+      MAIL_USER:         ${MAIL_USER}
+      APP_PASS:          ${APP_PASS}
+      ALLOWED_ORIGIN:    ${ALLOWED_ORIGIN}
+      FRONTEND_URL:      ${FRONTEND_URL}
+    volumes:
+      - cafe_bills:/app/cafe-stored-files
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - cafe_network
+
+  cafe-app-frontend:
+    build:
+      context: ./Cafe-Management-System-FE
+      dockerfile: Dockerfile
+    container_name: cafe-app-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - cafe-app-backend
+    networks:
+      - cafe_network
+
+networks:
+  cafe_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  cafe_bills:
