@@ -1,0 +1,21 @@
+# Node modules
+node_modules/
+
+# Angular / React build
+dist/
+build/
+
+# Java / Maven
+target/
+*.class
+
+# Logs
+*.log
+
+# IDE files
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
