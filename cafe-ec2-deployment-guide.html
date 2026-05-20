@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Cafe Management System – EC2 Amazon Linux Deployment</title>
+<style>
+  :root {
+    --brown: #6f4e37;
+    --cream: #fdf6ec;
+    --light: #fff9f2;
+    --accent: #c8813a;
+    --aws: #ff9900;
+    --aws-dark: #232f3e;
+    --green: #2e7d32;
+    --red: #c62828;
+    --blue: #1565c0;
+    --code-bg: #1e1e2e;
+    --code-fg: #cdd6f4;
+    --note-bg: #fff8e1;
+    --note-border: #f9a825;
+    --warn-bg: #fff3e0;
+    --warn-border: #e65100;
+    --tip-bg: #e8f5e9;
+    --tip-border: #2e7d32;
+    --aws-bg: #fff8f0;
+    --aws-border: #ff9900;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--cream); color: #2d2d2d; line-height: 1.75; }
+
+  header {
+    background: linear-gradient(135deg, var(--aws-dark) 0%, #131a22 100%);
+    color: #fff;
+    padding: 36px 48px 28px;
+    border-bottom: 4px solid var(--aws);
+  }
+  header h1 { font-size: 1.9rem; margin-bottom: 6px; }
+  header p { opacity: .8; font-size: .92rem; }
+  .badge { display: inline-block; background: var(--aws); color: #fff; font-size: .7rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; margin-right: 6px; margin-top: 10px; }
+
+  .wrapper { display: flex; min-height: calc(100vh - 110px); }
+
+  nav {
+    width: 260px; flex-shrink: 0;
+    background: #1a2232; color: #d4bda8;
+    padding: 24px 0;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  nav .toc-title { font-size: .68rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--aws); padding: 0 18px 12px; border-bottom: 1px solid #2d3a4a; margin-bottom: 10px; }
+  nav a { display: flex; align-items: center; gap: 8px; padding: 7px 18px; color: #b0c4d8; text-decoration: none; font-size: .81rem; border-left: 3px solid transparent; transition: all .15s; }
+  nav a:hover { background: #2d3a4a; color: #fff; border-left-color: var(--aws); }
+  nav .sn { display: inline-flex; align-items: center; justify-content: center; background: var(--aws); color: #fff; width: 20px; height: 20px; border-radius: 50%; font-size: .63rem; font-weight: 700; flex-shrink: 0; }
+
+  main { flex: 1; padding: 36px 52px; max-width: 980px; }
+
+  .section { margin-bottom: 48px; padding-bottom: 28px; border-bottom: 1px solid #e8d5c0; }
+  .section:last-child { border-bottom: none; }
+
+  h2 { font-size: 1.38rem; color: var(--aws-dark); margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+  h2 .sc { width: 34px; height: 34px; background: var(--aws); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .95rem; font-weight: 700; flex-shrink: 0; }
+  h2 .icon { font-size: 1.3rem; }
+  h3 { font-size: 1rem; color: #4a2f1a; margin: 20px 0 9px; padding-left: 10px; border-left: 3px solid var(--aws); }
+  p { margin-bottom: 12px; font-size: .92rem; }
+
+  pre { background: var(--code-bg); color: var(--code-fg); border-radius: 10px; padding: 16px 20px; overflow-x: auto; font-size: .81rem; line-height: 1.65; margin: 12px 0; }
+  pre .comment { color: #6c7086; font-style: italic; }
+  pre .key { color: #cba6f7; }
+  pre .val { color: #a6e3a1; }
+  pre .str { color: #fab387; }
+  pre .cmd { color: #89dceb; }
+  pre .hi  { color: #f9e2af; font-weight: bold; }
+  code { background: #ede5d8; color: var(--brown); padding: 1px 6px; border-radius: 4px; font-size: .82rem; font-family: 'Cascadia Code','Fira Code',monospace; }
+  pre code { background: none; color: inherit; padding: 0; }
+
+  .note, .warn, .tip, .danger, .aws-box {
+    border-radius: 8px; padding: 13px 16px; margin: 14px 0; font-size: .87rem;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .note   { background: var(--note-bg);  border-left: 4px solid var(--note-border); }
+  .warn   { background: var(--warn-bg);  border-left: 4px solid var(--warn-border); }
+  .tip    { background: var(--tip-bg);   border-left: 4px solid var(--tip-border);  }
+  .danger { background: #ffebee;         border-left: 4px solid #c62828;            }
+  .aws-box{ background: var(--aws-bg);   border-left: 4px solid var(--aws-border);  }
+  .ci { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+  .cb strong { display: block; margin-bottom: 3px; }
+
+  .file-card { background: var(--light); border: 1px solid #e0c9a8; border-radius: 10px; margin: 14px 0; overflow: hidden; }
+  .file-card-hdr { background: #232f3e; color: #f5e6d0; padding: 8px 16px; font-size: .77rem; font-weight: 600; letter-spacing: .4px; }
+  .file-card pre { margin: 0; border-radius: 0; }
+
+  .arch { background: var(--light); border: 1px solid #e0c9a8; border-radius: 12px; padding: 24px; margin: 16px 0; text-align: center; }
+  .arch-row { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0; }
+  .arch-box { color: #fff; padding: 9px 18px; border-radius: 8px; font-size: .8rem; font-weight: 600; min-width: 120px; background: var(--brown); }
+  .arch-box.ext   { background: #1565c0; }
+  .arch-box.aws   { background: var(--aws); color: #fff; }
+  .arch-box.db    { background: var(--green); }
+  .arch-box.redis { background: var(--red); }
+  .arch-box.nginx { background: #2e7d32; }
+  .arch-arrow { font-size: 1.1rem; color: var(--aws); }
+  .arch-label { font-size: .7rem; color: #888; margin-top: 12px; }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .85rem; }
+  th { background: var(--aws-dark); color: #fff; padding: 9px 14px; text-align: left; }
+  td { padding: 8px 14px; border-bottom: 1px solid #e8d5c0; vertical-align: top; }
+  tr:nth-child(even) td { background: var(--light); }
+
+  ol.steps { counter-reset: step; list-style: none; padding: 0; }
+  ol.steps li { counter-increment: step; display: flex; gap: 13px; margin-bottom: 16px; align-items: flex-start; font-size: .91rem; }
+  ol.steps li::before { content: counter(step); background: var(--aws); color: #fff; min-width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .78rem; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+
+  .cred-box { background: #1e1e2e; color: #cdd6f4; border-radius: 10px; padding: 16px 22px; margin: 14px 0; font-family: monospace; font-size: .84rem; }
+  .cred-box .lbl { color: #89b4fa; margin-right: 8px; }
+  .cred-box .v   { color: #a6e3a1; }
+
+  .tree { background: var(--code-bg); color: var(--code-fg); border-radius: 10px; padding: 16px 22px; font-family: monospace; font-size: .81rem; line-height: 1.9; margin: 12px 0; }
+  .tree .dir  { color: #89b4fa; font-weight: 600; }
+  .tree .nt   { color: #6c7086; font-style: italic; }
+
+  .sg-table { width: 100%; border-collapse: collapse; font-size: .84rem; margin: 14px 0; }
+  .sg-table th { background: #232f3e; color: #ff9900; padding: 8px 14px; text-align: left; }
+  .sg-table td { padding: 7px 14px; border-bottom: 1px solid #e0c9a8; }
+  .sg-table tr:nth-child(even) td { background: var(--light); }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: .74rem; font-weight: 700; }
+  .pill.in  { background: #e3f2fd; color: #0d47a1; }
+  .pill.out { background: #e8f5e9; color: #1b5e20; }
+
+  .big-url { background: #1e1e2e; color: #a6e3a1; border-radius: 10px; padding: 20px; margin: 14px 0; text-align: center; font-family: monospace; font-size: 1.15rem; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>☕ Cafe Management System on AWS EC2</h1>
+  <p>Complete step-by-step guide for deploying with Docker on Amazon Linux 2</p>
+  <div>
+    <span class="badge">🟠 AWS EC2</span>
+    <span class="badge">Amazon Linux 2</span>
+    <span class="badge">Docker</span>
+    <span class="badge">Spring Boot</span>
+    <span class="badge">Angular</span>
+    <span class="badge">MySQL 5.7</span>
+  </div>
+</header>
+
+<div class="wrapper">
+<nav>
+  <div class="toc-title">📋 Table of Contents</div>
+  <a href="#overview">🗺 Architecture</a>
+  <a href="#phase1">☁️ Phase 1 — AWS Setup</a>
+  <a href="#step1"><span class="sn">1</span> Launch EC2 Instance</a>
+  <a href="#step2"><span class="sn">2</span> Security Group (Ports)</a>
+  <a href="#step3"><span class="sn">3</span> Connect via SSH</a>
+  <a href="#phase2">🐳 Phase 2 — Server Setup</a>
+  <a href="#step4"><span class="sn">4</span> Install Docker</a>
+  <a href="#step5"><span class="sn">5</span> Upload Project Files</a>
+  <a href="#phase3">📝 Phase 3 — Code &amp; Config</a>
+  <a href="#step6"><span class="sn">6</span> Fix Source Code</a>
+  <a href="#step7"><span class="sn">7</span> Backend Dockerfile</a>
+  <a href="#step8"><span class="sn">8</span> Frontend Dockerfile</a>
+  <a href="#step9"><span class="sn">9</span> Nginx Config</a>
+  <a href="#step10"><span class="sn">10</span> docker-compose.yml</a>
+  <a href="#step11"><span class="sn">11</span> .env File</a>
+  <a href="#phase4">🚀 Phase 4 — Deploy</a>
+  <a href="#step12"><span class="sn">12</span> Build &amp; Run</a>
+  <a href="#step13"><span class="sn">13</span> Access App</a>
+  <a href="#step14"><span class="sn">14</span> First-Time Setup</a>
+  <a href="#troubleshoot">🔧 Troubleshooting</a>
+  <a href="#commands">📟 Commands Cheat Sheet</a>
+</nav>
+
+<main>
+
+<!-- ── OVERVIEW ── -->
+<section class="section" id="overview">
+  <h2><span class="icon">🗺</span> Architecture on AWS EC2</h2>
+
+  <div class="arch">
+    <div class="arch-row">
+      <div class="arch-box ext">🌐 User's Browser<br/><small>Anywhere in the world</small></div>
+    </div>
+    <div class="arch-row"><div class="arch-arrow">⬇ HTTP port 80</div></div>
+    <div class="arch-row">
+      <div class="arch-box aws">🟠 AWS EC2 Instance<br/><small>Amazon Linux 2 — your server</small></div>
+    </div>
+    <div class="arch-row"><div class="arch-arrow">⬇ inside EC2</div></div>
+    <div class="arch-row">
+      <div class="arch-box nginx">🎨 cafe-app-frontend<br/><small>Angular + Nginx :80</small></div>
+    </div>
+    <div class="arch-row"><div class="arch-arrow">⬇ proxies API calls</div></div>
+    <div class="arch-row">
+      <div class="arch-box" style="background:#5c3d1e">⚙️ cafe-app-backend<br/><small>Spring Boot :8081</small></div>
+    </div>
+    <div class="arch-row" style="gap:30px; margin-top:4px">
+      <div><div class="arch-arrow">⬇ :3306</div><div class="arch-box db">🐬 mysql:5.7</div></div>
+      <div><div class="arch-arrow">⬇ :6379</div><div class="arch-box redis">🔴 Redis</div></div>
+    </div>
+    <div class="arch-label">All 4 containers run on the same EC2 instance on a shared Docker network</div>
+  </div>
+
+  <table>
+    <tr><th>Container</th><th>Role</th><th>Port</th><th>Accessible from</th></tr>
+    <tr><td><code>cafe-app-frontend</code></td><td>Angular app + Nginx reverse proxy</td><td>80</td><td>Public (internet) — users open this</td></tr>
+    <tr><td><code>cafe-app-backend</code></td><td>Spring Boot REST API</td><td>8081</td><td>Private (only within Docker network)</td></tr>
+    <tr><td><code>mysql</code></td><td>MySQL 5.7 database</td><td>3306</td><td>Private (only within Docker network)</td></tr>
+    <tr><td><code>redis</code></td><td>Password reset token store</td><td>6379</td><td>Private (only within Docker network)</td></tr>
+  </table>
+
+  <div class="tip">
+    <span class="ci">🔐</span>
+    <div class="cb"><strong>Security Note</strong>Only port 80 (and 22 for SSH) needs to be open to the internet. The backend, MySQL, and Redis are never directly exposed — only Nginx can reach them.</div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════ -->
+<!-- PHASE 1 — AWS SETUP -->
+<!-- ════════════════════════════════════════════════════ -->
+<section class="section" id="phase1">
+  <h2><span class="icon">☁️</span> Phase 1 — AWS EC2 Setup</h2>
+  <p>Do all of this in the <strong>AWS Management Console</strong> from your computer's browser.</p>
+</section>
+
+<section class="section" id="step1">
+  <h2><span class="sc">1</span> Launch an EC2 Instance</h2>
+
+  <ol class="steps">
+    <li>Log in to AWS Console → go to <strong>EC2</strong> → click <strong>Launch Instance</strong></li>
+    <li>
+      <strong>Name:</strong> type <code>cafe-management-server</code>
+    </li>
+    <li>
+      <strong>AMI (OS):</strong> Select <strong>Amazon Linux 2 AMI (HVM)</strong><br/>
+      <small>Look for the one that says "Amazon Linux 2" — it's usually the first option and marked "Free tier eligible"</small>
+    </li>
+    <li>
+      <strong>Instance Type:</strong> Select <strong>t2.medium</strong><br/>
+      <div class="warn" style="margin-top:8px">
+        <span class="ci">⚠️</span>
+        <div class="cb"><strong>Do NOT use t2.micro (Free Tier)</strong> for this project. Building Angular + Spring Boot requires at least 2GB RAM. t2.micro (1GB) will run out of memory and crash during the build. t2.medium costs ~$0.05/hour — stop the instance when not using it.</div>
+      </div>
+    </li>
+    <li>
+      <strong>Key Pair:</strong> Click <strong>Create new key pair</strong>
+      <ul style="margin-left:20px; margin-top:6px; font-size:.88rem; line-height:2">
+        <li>Name: <code>cafe-key</code></li>
+        <li>Type: RSA</li>
+        <li>Format: <strong>.pem</strong> (for Mac/Linux) or <strong>.ppk</strong> (for Windows with PuTTY)</li>
+        <li>Click <strong>Create key pair</strong> — it downloads automatically. <strong>Save it safely!</strong></li>
+      </ul>
+    </li>
+    <li>
+      <strong>Network settings:</strong> Click <strong>Edit</strong>
+      <ul style="margin-left:20px; margin-top:6px; font-size:.88rem; line-height:2">
+        <li>VPC: leave default</li>
+        <li>Auto-assign public IP: <strong>Enable</strong></li>
+        <li>Firewall: Create new security group → name it <code>cafe-sg</code></li>
+      </ul>
+    </li>
+    <li>
+      <strong>Storage:</strong> Change from 8 GB to <strong>20 GB</strong> (gp2)<br/>
+      <small>Docker images + build cache can easily use 10+ GB</small>
+    </li>
+    <li>Click <strong>Launch Instance</strong> → wait ~1 minute → click the instance ID to open it</li>
+    <li>Copy the <strong>Public IPv4 address</strong> shown (e.g., <code>54.123.45.67</code>) — you'll use this everywhere</li>
+  </ol>
+
+  <div class="aws-box">
+    <span class="ci">🟠</span>
+    <div class="cb"><strong>Write down your EC2 Public IP!</strong> You'll need it in multiple places: SSH connection, .env file, and to access the app in browser. It changes every time you stop and start the instance (unless you use an Elastic IP).</div>
+  </div>
+</section>
+
+<section class="section" id="step2">
+  <h2><span class="sc">2</span> Configure Security Group (Open Ports)</h2>
+
+  <p>Security Groups are EC2's firewall. You need to open exactly these ports:</p>
+
+  <ol class="steps">
+    <li>In EC2 Console → left sidebar → <strong>Security Groups</strong></li>
+    <li>Click on <code>cafe-sg</code></li>
+    <li>Click <strong>Inbound rules</strong> tab → <strong>Edit inbound rules</strong></li>
+    <li>Add these rules (click <strong>Add rule</strong> for each):</li>
+  </ol>
+
+  <table class="sg-table">
+    <tr><th>Type</th><th>Protocol</th><th>Port</th><th>Source</th><th>Purpose</th></tr>
+    <tr>
+      <td>SSH</td><td>TCP</td><td>22</td>
+      <td><strong>My IP</strong> (auto-fills your IP)</td>
+      <td>Connect to EC2 from your computer</td>
+    </tr>
+    <tr>
+      <td>HTTP</td><td>TCP</td><td>80</td>
+      <td><code>0.0.0.0/0</code> (Anywhere)</td>
+      <td>Users access the web app</td>
+    </tr>
+  </table>
+
+  <div class="tip">
+    <span class="ci">✅</span>
+    <div class="cb"><strong>That's all you need to open!</strong> Port 8081 (backend), 3306 (MySQL), and 6379 (Redis) stay closed to the internet. Nginx handles forwarding inside Docker.</div>
+  </div>
+
+  <p>Click <strong>Save rules</strong>.</p>
+</section>
+
+<section class="section" id="step3">
+  <h2><span class="sc">3</span> Connect to EC2 via SSH</h2>
+
+  <p>From your local computer's terminal, connect to the EC2 instance.</p>
+
+  <h3>On Mac / Linux:</h3>
+  <pre><code><span class="comment"># First: fix permissions on your key file (required by SSH)</span>
+<span class="cmd">chmod 400 ~/Downloads/cafe-key.pem</span>
+
+<span class="comment"># Connect to EC2 (replace with your actual Public IP)</span>
+<span class="cmd">ssh -i ~/Downloads/cafe-key.pem ec2-user@<span class="hi">54.123.45.67</span></span>
+
+<span class="comment"># Type "yes" when asked about fingerprint</span></code></pre>
+
+  <h3>On Windows (using PowerShell):</h3>
+  <pre><code><span class="comment"># PowerShell supports ssh natively</span>
+<span class="cmd">ssh -i C:\Users\YourName\Downloads\cafe-key.pem ec2-user@<span class="hi">54.123.45.67</span></span></code></pre>
+
+  <h3>On Windows (using PuTTY):</h3>
+  <ol class="steps">
+    <li>Open PuTTYgen → Load your <code>.pem</code> file → Save as <code>.ppk</code></li>
+    <li>Open PuTTY → Host: <code>ec2-user@54.123.45.67</code> → Port: 22</li>
+    <li>Connection → SSH → Auth → Browse → select your <code>.ppk</code> file → Open</li>
+  </ol>
+
+  <div class="note">
+    <span class="ci">💡</span>
+    <div class="cb">You should see a prompt like <code>[ec2-user@ip-172-xx-xx-xx ~]$</code> — this means you are inside your EC2 server. All following commands are typed here.</div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════ -->
+<!-- PHASE 2 — SERVER SETUP -->
+<!-- ════════════════════════════════════════════════════ -->
+<section class="section" id="phase2">
+  <h2><span class="icon">🐳</span> Phase 2 — Install Docker on EC2</h2>
+  <p>Run all commands below in your SSH terminal (connected to EC2).</p>
+</section>
+
+<section class="section" id="step4">
+  <h2><span class="sc">4</span> Install Docker &amp; Docker Compose</h2>
+
+  <p>Amazon Linux 2 does not come with Docker. Run these commands one by one:</p>
+
+  <pre><code><span class="comment"># Step 4a: Update the system</span>
+<span class="cmd">sudo yum update -y</span>
+
+<span class="comment"># Step 4b: Install Docker</span>
+<span class="cmd">sudo yum install docker -y</span>
+
+<span class="comment"># Step 4c: Start Docker and enable it to start on reboot</span>
+<span class="cmd">sudo systemctl start docker
+sudo systemctl enable docker</span>
+
+<span class="comment"># Step 4d: Allow your user to run Docker without "sudo" every time</span>
+<span class="cmd">sudo usermod -aG docker ec2-user</span>
+
+<span class="comment"># Step 4e: IMPORTANT — log out and log back in so the group change takes effect</span>
+<span class="cmd">exit</span>
+
+<span class="comment"># Now SSH back in again:</span>
+<span class="cmd">ssh -i ~/Downloads/cafe-key.pem ec2-user@<span class="hi">54.123.45.67</span></span></code></pre>
+
+  <pre><code><span class="comment"># Step 4f: Install Docker Compose v2</span>
+<span class="cmd">sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose</span>
+
+<span class="comment"># Step 4g: Also make "docker compose" (with space) work</span>
+<span class="cmd">sudo mkdir -p /usr/local/lib/docker/cli-plugins
+sudo curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" -o /usr/local/lib/docker/cli-plugins/docker-compose
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose</span>
+
+<span class="comment"># Step 4h: Verify both work</span>
+<span class="cmd">docker --version
+docker compose version</span>
+
+<span class="comment"># Expected output:
+# Docker version 24.x.x
+# Docker Compose version 2.x.x</span></code></pre>
+
+  <div class="tip">
+    <span class="ci">✅</span>
+    <div class="cb">If <code>docker ps</code> works without needing <code>sudo</code>, Docker is correctly installed.</div>
+  </div>
+</section>
+
+<section class="section" id="step5">
+  <h2><span class="sc">5</span> Upload Your Project Files to EC2</h2>
+
+  <p>You need to transfer your project files from your local computer to EC2. You have two options:</p>
+
+  <h3>Option A — Upload using SCP (recommended)</h3>
+  <p>Run this from your <strong>local computer's terminal</strong> (not inside SSH):</p>
+
+  <pre><code><span class="comment"># Upload the backend zip</span>
+<span class="cmd">scp -i ~/Downloads/cafe-key.pem Cafe-Management-System-BE-main.zip ec2-user@<span class="hi">54.123.45.67</span>:~/</span>
+
+<span class="comment"># Upload the frontend zip</span>
+<span class="cmd">scp -i ~/Downloads/cafe-key.pem Cafe-Management-System-FE-main.zip ec2-user@<span class="hi">54.123.45.67</span>:~/</span></code></pre>
+
+  <p>Then back in your <strong>SSH terminal</strong> (inside EC2), extract and set up the folder:</p>
+
+  <pre><code><span class="comment"># Create the main project folder</span>
+<span class="cmd">mkdir -p ~/cafe-management
+cd ~/cafe-management</span>
+
+<span class="comment"># Extract backend</span>
+<span class="cmd">unzip ~/Cafe-Management-System-BE-main.zip -d /tmp/
+mv /tmp/Cafe-Management-System-BE-main ~/cafe-management/backend</span>
+
+<span class="comment"># Extract frontend</span>
+<span class="cmd">unzip ~/Cafe-Management-System-FE-main.zip -d /tmp/
+mv /tmp/Cafe-Management-System-FE-main ~/cafe-management/frontend</span>
+
+<span class="comment"># Confirm structure</span>
+<span class="cmd">ls ~/cafe-management/</span>
+<span class="comment"># Should show: backend  frontend</span></code></pre>
+
+  <h3>Option B — Clone from GitHub (if your code is on GitHub)</h3>
+  <pre><code><span class="cmd">sudo yum install git -y
+cd ~
+git clone https://github.com/your-username/your-repo.git cafe-management
+cd cafe-management</span></code></pre>
+
+  <div class="note">
+    <span class="ci">💡</span>
+    <div class="cb">We'll also need to install <code>unzip</code> if it's not present: <code>sudo yum install unzip -y</code></div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════ -->
+<!-- PHASE 3 — CODE AND CONFIG -->
+<!-- ════════════════════════════════════════════════════ -->
+<section class="section" id="phase3">
+  <h2><span class="icon">📝</span> Phase 3 — Code Changes &amp; Configuration Files</h2>
+  <p>All the following commands are run inside your EC2 SSH session in the <code>~/cafe-management</code> folder.</p>
+</section>
+
+<section class="section" id="step6">
+  <h2><span class="sc">6</span> Fix the Source Code</h2>
+
+  <p>Three files must be fixed before Docker can build successfully.</p>
+
+  <h3>Fix 1 — CafeConstants.java (Windows path → Linux path)</h3>
+  <pre><code><span class="cmd">nano ~/cafe-management/backend/src/main/java/com/in/cafe/constants/CafeConstants.java</span></code></pre>
+
+  <div class="file-card">
+    <div class="file-card-hdr">📄 Replace the entire file content with this:</div>
+    <pre><code><span class="key">package</span> com.in.cafe.constants;
+
+<span class="key">public class</span> CafeConstants {
+
+    <span class="key">public static final</span> String SOMETHING_WENT_WRONG = <span class="str">"Something Went Wrong."</span>;
+    <span class="key">public static final</span> String INVALID_DATA         = <span class="str">"Invalid Data."</span>;
+    <span class="key">public static final</span> String UNAUTHORIZED_ACCESS   = <span class="str">"Unauthorized access."</span>;
+
+    <span class="comment">// ✅ Linux path — works in Docker on EC2</span>
+    <span class="key">public static final</span> String STORE_LOCATION = <span class="str">"/app/cafe-stored-files"</span>;
+}</code></pre>
+  </div>
+  <p>Save: <kbd>Ctrl+X</kbd> → <kbd>Y</kbd> → <kbd>Enter</kbd></p>
+
+  <h3>Fix 2 — BillServiceImpl.java (backslash → forward slash)</h3>
+  <p>Use sed to find-and-replace the backslash path separators automatically:</p>
+  <pre><code><span class="cmd">sed -i 's|STORE_LOCATION + "\\\\" +|STORE_LOCATION + "/" +|g' \
+  ~/cafe-management/backend/src/main/java/com/in/cafe/serviceImpl/BillServiceImpl.java</span>
+
+<span class="comment"># Verify the fix worked (should show "/" not "\\"):</span>
+<span class="cmd">grep "STORE_LOCATION" ~/cafe-management/backend/src/main/java/com/in/cafe/serviceImpl/BillServiceImpl.java</span></code></pre>
+
+  <h3>Fix 3 — environment.ts (hardcoded IP → empty for Nginx proxy)</h3>
+  <pre><code><span class="cmd">cat > ~/cafe-management/frontend/src/environments/environment.ts << 'EOF'
+export const environment = {
+  production: false,
+  apiUrl: ''
+};
+EOF</span>
+
+<span class="cmd">cat > ~/cafe-management/frontend/src/environments/environment.prod.ts << 'EOF'
+export const environment = {
+  production: true,
+  apiUrl: ''
+};
+EOF</span></code></pre>
+
+  <div class="note">
+    <span class="ci">💡</span>
+    <div class="cb"><strong>Why empty string?</strong> With <code>apiUrl: ''</code>, all Angular HTTP calls go to the same host the browser is on. Nginx then sees those requests and forwards the API ones to the backend container. The browser never needs to know the backend's IP.</div>
+  </div>
+
+  <h3>Fix 4 — application.properties (Redis host fix)</h3>
+  <p>The properties file has <code>spring.data.redis.host=localhost</code> — inside Docker, Redis is reachable by its container name, not <code>localhost</code>. Fix it:</p>
+  <pre><code><span class="cmd">sed -i 's/spring.data.redis.host=localhost/spring.data.redis.host=redis/' \
+  ~/cafe-management/backend/src/main/resources/application.properties</span>
+
+<span class="comment"># Verify:</span>
+<span class="cmd">grep "redis.host" ~/cafe-management/backend/src/main/resources/application.properties</span>
+<span class="comment"># Should show: spring.data.redis.host=redis</span></code></pre>
+</section>
+
+<section class="section" id="step7">
+  <h2><span class="sc">7</span> Create Backend Dockerfile</h2>
+
+  <pre><code><span class="cmd">cat > ~/cafe-management/backend/Dockerfile << 'EOF'
+# Stage 1 — Build .jar with Maven
+FROM maven:3.9.6-eclipse-temurin-17 AS build
+WORKDIR /app
+COPY . .
+RUN mvn clean package -DskipTests
+
+# Stage 2 — Run .jar in lightweight Java container
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+RUN mkdir -p /app/cafe-stored-files
+COPY --from=build /app/target/*.jar app.jar
+EXPOSE 8081
+ENTRYPOINT ["java", "-jar", "app.jar"]
+EOF</span></code></pre>
+</section>
+
+<section class="section" id="step8">
+  <h2><span class="sc">8</span> Create Frontend Dockerfile</h2>
+
+  <pre><code><span class="cmd">cat > ~/cafe-management/frontend/Dockerfile << 'EOF'
+# Stage 1 — Build Angular app
+FROM node:16-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
+COPY . .
+RUN npm run build -- --configuration=production
+
+# Stage 2 — Serve with Nginx
+FROM nginx:alpine
+COPY --from=build /app/dist/frontend /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+EOF</span></code></pre>
+</section>
+
+<section class="section" id="step9">
+  <h2><span class="sc">9</span> Create Nginx Configuration</h2>
+
+  <p>This config serves Angular and proxies all API calls to the backend container:</p>
+
+  <pre><code><span class="cmd">cat > ~/cafe-management/frontend/nginx.conf << 'EOF'
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Angular routing — refresh on any URL works
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Proxy all API calls to Spring Boot backend
+    location ~ ^/(user|category|product|bill|dashboard|password)/ {
+        proxy_pass       http://cafe-app-backend:8081;
+        proxy_set_header Host            $host;
+        proxy_set_header X-Real-IP       $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        client_max_body_size 10M;
+    }
+}
+EOF</span></code></pre>
+</section>
+
+<section class="section" id="step10">
+  <h2><span class="sc">10</span> Create docker-compose.yml</h2>
+
+  <pre><code><span class="cmd">cat > ~/cafe-management/docker-compose.yml << 'EOF'
+version: '3.8'
+
+services:
+
+  mysql:
+    image: mysql:5.7
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
+      MYSQL_DATABASE:      cafe_db
+      MYSQL_USER:          ${DB_USER}
+      MYSQL_PASSWORD:      ${DB_PASS}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - cafe_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_ROOT_PASS}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    networks:
+      - cafe_network
+
+  cafe-app-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cafe-app-backend
+    restart: always
+    environment:
+      DB_URL:            jdbc:mysql://mysql:3306/cafe_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      DB_USER:           ${DB_USER}
+      DB_PASS:           ${DB_PASS}
+      MAIL_USER:         ${MAIL_USER}
+      APP_PASS:          ${APP_PASS}
+      ALLOWED_ORIGIN:    ${ALLOWED_ORIGIN}
+      FRONTEND_URL:      ${FRONTEND_URL}
+    volumes:
+      - cafe_bills:/app/cafe-stored-files
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - cafe_network
+
+  cafe-app-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cafe-app-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - cafe-app-backend
+    networks:
+      - cafe_network
+
+networks:
+  cafe_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  cafe_bills:
+EOF</span></code></pre>
+
+  <div class="tip">
+    <span class="ci">🔐</span>
+    <div class="cb"><strong>Port exposure change from local setup:</strong> On EC2, the backend (8081), MySQL (3306), and Redis (6379) are NOT exposed to the host. Only port 80 is. This is intentional — those services are only accessible inside the Docker network, not from the internet.</div>
+  </div>
+</section>
+
+<section class="section" id="step11">
+  <h2><span class="sc">11</span> Create the .env File</h2>
+
+  <div class="danger">
+    <span class="ci">🔒</span>
+    <div class="cb"><strong>Replace ALL placeholder values below</strong> with your actual information before saving. Especially: your EC2 Public IP, your Gmail address, and your Gmail App Password.</div>
+  </div>
+
+  <pre><code><span class="cmd">nano ~/cafe-management/.env</span></code></pre>
+
+  <p>Paste exactly this content (edit the values marked with ⬅️):</p>
+
+  <div class="file-card">
+    <div class="file-card-hdr">📄 ~/cafe-management/.env</div>
+    <pre><code><span class="comment"># ── Database credentials ─────────────────────────────────────</span>
+DB_ROOT_PASS=<span class="val">rootStrongPass123!</span>
+DB_USER=<span class="val">cafeuser</span>
+DB_PASS=<span class="val">cafePass456!</span>
+
+<span class="comment"># ── Gmail (for user approval emails + password reset) ─────────</span>
+MAIL_USER=<span class="val">your.email@gmail.com</span>   <span class="comment">   # ⬅️ your Gmail address</span>
+APP_PASS=<span class="val">xxxx xxxx xxxx xxxx</span>      <span class="comment">  # ⬅️ Gmail App Password (see below)</span>
+
+<span class="comment"># ── EC2 Public IP — replace with YOUR actual EC2 Public IP ───</span>
+<span class="comment"># Find it in EC2 Console → Instances → Public IPv4 address</span>
+ALLOWED_ORIGIN=<span class="val">http://54.123.45.67</span>   <span class="comment"> # ⬅️ your EC2 IP</span>
+FRONTEND_URL=<span class="val">http://54.123.45.67</span>    <span class="comment"> # ⬅️ your EC2 IP</span></code></pre>
+  </div>
+
+  <p>Save: <kbd>Ctrl+X</kbd> → <kbd>Y</kbd> → <kbd>Enter</kbd></p>
+
+  <h3>How to get a Gmail App Password:</h3>
+  <ol class="steps">
+    <li>Go to <code>myaccount.google.com</code> → <strong>Security</strong></li>
+    <li>Enable <strong>2-Step Verification</strong> (required)</li>
+    <li>Search for "App passwords" → select <strong>Mail</strong> + <strong>Other</strong> → name it "Cafe EC2"</li>
+    <li>Copy the 16-character code (looks like <code>abcd efgh ijkl mnop</code>) → paste as <code>APP_PASS</code></li>
+  </ol>
+
+  <div class="note">
+    <span class="ci">💡</span>
+    <div class="cb"><strong>EC2 Elastic IP (optional but recommended):</strong> By default, your EC2 Public IP changes every time you stop and start the instance. To get a permanent IP, go to EC2 → Elastic IPs → Allocate → Associate with your instance. This is free as long as the instance is running.</div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════ -->
+<!-- PHASE 4 — DEPLOY -->
+<!-- ════════════════════════════════════════════════════ -->
+<section class="section" id="phase4">
+  <h2><span class="icon">🚀</span> Phase 4 — Build &amp; Deploy</h2>
+  <p>You're ready to launch! All commands from here are run in your EC2 SSH session.</p>
+</section>
+
+<section class="section" id="step12">
+  <h2><span class="sc">12</span> Build and Start All Containers</h2>
+
+  <pre><code><span class="comment"># Navigate to the project folder</span>
+<span class="cmd">cd ~/cafe-management</span>
+
+<span class="comment"># Verify all files are in place before building</span>
+<span class="cmd">ls -la</span>
+<span class="comment"># You should see: backend/  frontend/  docker-compose.yml  .env</span>
+
+<span class="cmd">ls backend/</span>
+<span class="comment"># You should see: Dockerfile  pom.xml  src/  ...</span>
+
+<span class="cmd">ls frontend/</span>
+<span class="comment"># You should see: Dockerfile  nginx.conf  package.json  src/  ...</span></code></pre>
+
+  <pre><code><span class="comment"># Build all images and start all containers
+# First time takes 10-20 minutes — Maven downloads dependencies, npm installs packages</span>
+<span class="cmd">docker compose up --build -d</span>
+
+<span class="comment"># Watch the logs to see what's happening</span>
+<span class="cmd">docker compose logs -f</span>
+<span class="comment"># Press Ctrl+C to stop watching logs (containers keep running)</span></code></pre>
+
+  <h3>Check all 4 containers are running:</h3>
+  <pre><code><span class="cmd">docker compose ps</span></code></pre>
+
+  <p>Expected output — all should show <strong>Up</strong>:</p>
+  <pre><code>NAME                STATUS          PORTS
+cafe-app-backend    Up              (no public port - private only)
+cafe-app-frontend   Up              0.0.0.0:80->80/tcp
+mysql               Up (healthy)    (no public port - private only)
+redis               Up              (no public port - private only)</code></pre>
+
+  <div class="note">
+    <span class="ci">⏱️</span>
+    <div class="cb"><strong>Backend may take 30–60 seconds to start</strong> after MySQL is healthy. If you see it restarting a few times at first — that's normal. It retries until MySQL is fully ready.</div>
+  </div>
+
+  <h3>Check backend started successfully:</h3>
+  <pre><code><span class="cmd">docker compose logs cafe-app-backend | tail -20</span>
+<span class="comment"># Look for: "Started CafeManagementSystemApplication in X.XXX seconds"</span></code></pre>
+</section>
+
+<section class="section" id="step13">
+  <h2><span class="sc">13</span> Access the Application</h2>
+
+  <p>Open your browser and go to your EC2 Public IP:</p>
+
+  <div class="big-url">http://54.123.45.67 &nbsp;&nbsp;← replace with YOUR EC2 Public IP</div>
+
+  <p>You should see the Cafe Management System home page!</p>
+
+  <table>
+    <tr><th>What to check</th><th>URL</th><th>Expected result</th></tr>
+    <tr>
+      <td>App home page</td>
+      <td><code>http://YOUR_EC2_IP</code></td>
+      <td>Cafe landing page with Login button</td>
+    </tr>
+    <tr>
+      <td>Backend alive check</td>
+      <td><code>http://YOUR_EC2_IP/user/checkToken</code></td>
+      <td>Returns 401 error (proof backend responds)</td>
+    </tr>
+  </table>
+
+  <div class="warn">
+    <span class="ci">⚠️</span>
+    <div class="cb"><strong>If the page doesn't load:</strong>
+      <ul style="margin-top:6px; margin-left:16px; font-size:.88rem; line-height:2">
+        <li>Make sure port 80 is open in your Security Group (Step 2)</li>
+        <li>Make sure all 4 containers are Up: <code>docker compose ps</code></li>
+        <li>Check for errors: <code>docker compose logs cafe-app-frontend</code></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="step14">
+  <h2><span class="sc">14</span> First-Time Setup (Create Admin &amp; Add Data)</h2>
+
+  <h3>Step A — Register your account</h3>
+  <ol class="steps">
+    <li>Open <code>http://YOUR_EC2_IP</code> in browser → click <strong>Sign Up</strong></li>
+    <li>Fill in name, email, phone number, password → click <strong>Sign Up</strong></li>
+    <li>You'll see "Successfully Registered" — but you can't log in yet</li>
+  </ol>
+
+  <h3>Step B — Make yourself Admin in MySQL</h3>
+  <pre><code><span class="comment"># Open MySQL inside the container</span>
+<span class="cmd">docker exec -it mysql mysql -u cafeuser -pcafePass456! cafe_db</span>
+
+<span class="comment"># Check your user exists:</span>
+<span class="cmd">SELECT id, name, email, role, status FROM user;</span>
+
+<span class="comment"># Make yourself admin (replace the email with yours):</span>
+<span class="cmd">UPDATE user SET role='admin', status='true' WHERE email='your.email@gmail.com';</span>
+
+<span class="comment"># Confirm the change:</span>
+<span class="cmd">SELECT id, name, email, role, status FROM user;</span>
+
+<span class="cmd">exit</span></code></pre>
+
+  <h3>Step C — Log in and explore</h3>
+  <ol class="steps">
+    <li>Go to <code>http://YOUR_EC2_IP</code> → click <strong>Login</strong> → enter your email and password</li>
+    <li>You are now logged in as Admin</li>
+    <li>Sidebar → <strong>Manage Category</strong> → add: Coffee, Tea, Snacks</li>
+    <li>Sidebar → <strong>Manage Product</strong> → add products under each category</li>
+    <li>Sidebar → <strong>Manage Order</strong> → place a test order → PDF downloads automatically</li>
+  </ol>
+
+  <h3>Step D — Create a regular User</h3>
+  <ol class="steps">
+    <li>Open Incognito / different browser → go to <code>http://YOUR_EC2_IP</code> → Sign Up with a different email</li>
+    <li>In your Admin browser → Sidebar → <strong>Manage User</strong> → toggle the new user to Active</li>
+    <li>User receives an approval email and can now log in</li>
+  </ol>
+
+  <h3>Role Permissions Summary</h3>
+  <table>
+    <tr><th>Feature</th><th>Admin</th><th>User</th></tr>
+    <tr><td>Dashboard</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Manage Category</td><td>✅</td><td>❌</td></tr>
+    <tr><td>Manage Product</td><td>✅</td><td>❌</td></tr>
+    <tr><td>Manage Order (place orders)</td><td>✅</td><td>✅</td></tr>
+    <tr><td>View Bill</td><td>✅ All bills</td><td>✅ Own bills only</td></tr>
+    <tr><td>Manage User</td><td>✅</td><td>❌</td></tr>
+  </table>
+</section>
+
+<!-- ── TROUBLESHOOT ── -->
+<section class="section" id="troubleshoot">
+  <h2><span class="icon">🔧</span> Troubleshooting EC2-Specific Issues</h2>
+
+  <h3>❌ Page won't load — "This site can't be reached"</h3>
+  <pre><code><span class="comment"># 1. Check Security Group has port 80 open (Step 2)
+# 2. Check frontend container is running:</span>
+<span class="cmd">docker compose ps</span>
+<span class="cmd">docker compose logs cafe-app-frontend</span></code></pre>
+
+  <h3>❌ "docker: command not found" after installing</h3>
+  <pre><code><span class="comment"># You need to log out and back in after the usermod command</span>
+<span class="cmd">exit</span>
+<span class="comment"># Then SSH back in and try again</span></code></pre>
+
+  <h3>❌ Build fails — "Killed" or "Out of memory"</h3>
+  <pre><code><span class="comment"># This means your EC2 instance doesn't have enough RAM
+# Solution: Add swap space (virtual memory)</span>
+<span class="cmd">sudo dd if=/dev/zero of=/swapfile bs=128M count=16
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile swap swap defaults 0 0' | sudo tee -a /etc/fstab</span>
+
+<span class="comment"># Verify swap is active:</span>
+<span class="cmd">free -h</span>
+
+<span class="comment"># Now retry the build:</span>
+<span class="cmd">cd ~/cafe-management && docker compose up --build -d</span></code></pre>
+
+  <h3>❌ Backend keeps restarting</h3>
+  <pre><code><span class="comment"># Check what error it's throwing:</span>
+<span class="cmd">docker compose logs cafe-app-backend</span>
+
+<span class="comment"># Common cause: MySQL not ready yet. Wait 30 seconds then:</span>
+<span class="cmd">docker compose restart cafe-app-backend</span>
+
+<span class="comment"># Another common cause: wrong DB credentials in .env</span>
+<span class="cmd">cat ~/cafe-management/.env</span></code></pre>
+
+  <h3>❌ Angular API calls fail — CORS error in browser console</h3>
+  <pre><code><span class="comment"># Check ALLOWED_ORIGIN in .env matches your EC2 IP exactly (no trailing slash):</span>
+<span class="cmd">cat ~/cafe-management/.env | grep ALLOWED_ORIGIN</span>
+<span class="comment"># Must be: ALLOWED_ORIGIN=http://54.123.45.67  (your actual IP)
+
+# Rebuild after fixing .env:</span>
+<span class="cmd">docker compose down
+docker compose up --build -d</span></code></pre>
+
+  <h3>❌ EC2 Public IP changed after restart</h3>
+  <pre><code><span class="comment"># Your IP changes every time you stop/start the instance.
+# Option 1: Update .env with the new IP and redeploy
+# Option 2 (permanent fix): Allocate an Elastic IP in AWS Console
+#   EC2 → Elastic IPs → Allocate → Associate with your instance
+#   This IP never changes (free while instance is running)</span></code></pre>
+
+  <h3>❌ "port 80 already in use" on EC2</h3>
+  <pre><code><span class="comment"># Check what's using port 80:</span>
+<span class="cmd">sudo ss -tlnp | grep :80</span>
+
+<span class="comment"># If Apache/httpd is running, stop it:</span>
+<span class="cmd">sudo systemctl stop httpd
+sudo systemctl disable httpd</span>
+
+<span class="comment"># Then retry:</span>
+<span class="cmd">docker compose up -d</span></code></pre>
+
+  <h3>❌ PDF bills not generating</h3>
+  <pre><code><span class="comment"># Verify the code fix in Step 6 was applied:</span>
+<span class="cmd">grep "STORE_LOCATION" ~/cafe-management/backend/src/main/java/com/in/cafe/serviceImpl/BillServiceImpl.java</span>
+<span class="comment"># Must show "/" not "\\"
+
+# Check the volume directory exists inside the container:</span>
+<span class="cmd">docker exec cafe-app-backend ls /app/cafe-stored-files</span></code></pre>
+
+  <h3>❌ Storage running low on EC2</h3>
+  <pre><code><span class="comment"># Check disk usage:</span>
+<span class="cmd">df -h</span>
+
+<span class="comment"># Clean up Docker build cache:</span>
+<span class="cmd">docker system prune -f</span>
+
+<span class="comment"># See what's using space in Docker:</span>
+<span class="cmd">docker system df</span></code></pre>
+</section>
+
+<!-- ── COMMANDS CHEAT SHEET ── -->
+<section class="section" id="commands">
+  <h2><span class="icon">📟</span> EC2 Commands Cheat Sheet</h2>
+
+  <h3>Daily Operations</h3>
+  <table>
+    <tr><th>Command</th><th>What it does</th></tr>
+    <tr><td><code>cd ~/cafe-management && docker compose up -d</code></td><td>Start the app (after first setup, no rebuild needed)</td></tr>
+    <tr><td><code>docker compose down</code></td><td>Stop the app (data is preserved in volumes)</td></tr>
+    <tr><td><code>docker compose ps</code></td><td>Check all container statuses</td></tr>
+    <tr><td><code>docker compose logs -f</code></td><td>Watch all logs live</td></tr>
+    <tr><td><code>docker compose logs cafe-app-backend</code></td><td>See only backend logs</td></tr>
+    <tr><td><code>docker compose restart cafe-app-backend</code></td><td>Restart only the backend</td></tr>
+  </table>
+
+  <h3>When You Update Code</h3>
+  <table>
+    <tr><th>Command</th><th>What it does</th></tr>
+    <tr><td><code>docker compose up --build -d</code></td><td>Rebuild changed images and restart</td></tr>
+    <tr><td><code>docker compose build --no-cache && docker compose up -d</code></td><td>Full clean rebuild (if build has stale cache)</td></tr>
+  </table>
+
+  <h3>Database Access</h3>
+  <table>
+    <tr><th>Command</th><th>What it does</th></tr>
+    <tr><td><code>docker exec -it mysql mysql -u cafeuser -pcafePass456! cafe_db</code></td><td>Open MySQL shell</td></tr>
+    <tr><td><code>SELECT * FROM user;</code></td><td>See all users (inside MySQL shell)</td></tr>
+    <tr><td><code>UPDATE user SET role='admin', status='true' WHERE email='x@x.com';</code></td><td>Make a user admin</td></tr>
+  </table>
+
+  <h3>EC2 Instance Management (from AWS Console)</h3>
+  <table>
+    <tr><th>Action</th><th>Notes</th></tr>
+    <tr><td>Stop instance</td><td>Saves money — you're not charged for compute. Data volumes are safe. Public IP changes when you start again.</td></tr>
+    <tr><td>Start instance</td><td>Docker containers with <code>restart: always</code> start automatically. Just go to <code>http://new-ip</code>.</td></tr>
+    <tr><td>Elastic IP</td><td>Keeps your IP the same across stop/start — go to EC2 → Elastic IPs → Allocate → Associate</td></tr>
+  </table>
+
+  <div class="tip">
+    <span class="ci">🎉</span>
+    <div class="cb"><strong>You're live on AWS!</strong> Your Cafe Management System is running on Amazon Linux EC2 and accessible from anywhere in the world at <code>http://YOUR_EC2_IP</code>. Share the link with your team!</div>
+  </div>
+</section>
+
+</main>
+</div>
+</body>
+</html>
