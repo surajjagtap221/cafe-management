@@ -1,4 +1,4 @@
-# ☕ Cafe Management System on AWS EC2
+#  Cafe Management System on AWS EC2
 
 Complete step-by-step deployment guide for running the Cafe Management System using:
 
@@ -13,10 +13,10 @@ Complete step-by-step deployment guide for running the Cafe Management System us
 
 ---
 
-# 📌 Project Architecture
+#  Project Architecture
 
 ```text
-🌐 User Browser
+   User Browser
        │
        ▼
 ┌─────────────────────┐
@@ -46,7 +46,7 @@ MySQL       Redis
 
 ---
 
-# 📋 Containers Used
+#   Containers Used
 
 | Container | Purpose | Port |
 |---|---|---|
@@ -57,9 +57,9 @@ MySQL       Redis
 
 ---
 
-# ☁️ Phase 1 — AWS EC2 Setup
+#   Phase 1 — AWS EC2 Setup
 
-## 1️⃣ Launch EC2 Instance
+##   Launch EC2 Instance
 
 ### Recommended Configuration
 
@@ -70,11 +70,11 @@ MySQL       Redis
 | Storage | 20 GB |
 | Security Group | cafe-sg |
 
-> ⚠️ Do NOT use t2.micro. Angular + Maven builds require more RAM.
+>   Do NOT use t2.micro. Angular + Maven builds require more RAM.
 
 ---
 
-## 2️⃣ Configure Security Group
+##   Configure Security Group
 
 Open only these ports:
 
@@ -85,7 +85,7 @@ Open only these ports:
 
 ---
 
-## 3️⃣ Connect to EC2
+##   Connect to EC2
 
 ### Mac / Linux
 
@@ -103,9 +103,9 @@ ssh -i C:\Users\YourName\Downloads\cafe-key.pem ec2-user@YOUR_EC2_PUBLIC_IP
 
 ---
 
-# 🐳 Phase 2 — Install Docker
+#   Phase 2 — Install Docker
 
-## 4️⃣ Install Docker
+##   Install Docker
 
 ```bash
 sudo yum update -y
@@ -140,9 +140,9 @@ docker compose version
 
 ---
 
-# 📂 Phase 3 — Upload Project Files
+#   Phase 3 — Upload Project Files
 
-## 5️⃣ Upload Files using SCP
+##   Upload Files using SCP
 
 ### Upload Backend
 
@@ -179,7 +179,7 @@ mv /tmp/Cafe-Management-System-FE-main frontend
 
 ---
 
-# 📝 Phase 4 — Source Code Fixes
+#   Phase 4 — Source Code Fixes
 
 ## Fix CafeConstants.java
 
@@ -237,7 +237,7 @@ sed -i 's/spring.data.redis.host=localhost/spring.data.redis.host=redis/' \
 
 ---
 
-# 🐳 Phase 5 — Docker Configuration
+#  Phase 5 — Docker Configuration
 
 ## Backend Dockerfile
 
@@ -339,7 +339,7 @@ server {
 
 ---
 
-# 🧩 docker-compose.yml
+#  docker-compose.yml
 
 Create:
 
@@ -434,7 +434,7 @@ volumes:
 
 ---
 
-# 🔐 Create .env File
+#  Create .env File
 
 Create:
 
@@ -456,7 +456,7 @@ FRONTEND_URL=http://YOUR_EC2_PUBLIC_IP
 
 ---
 
-# 🚀 Build & Run
+#  Build & Run
 
 ## Build Containers
 
@@ -493,7 +493,7 @@ docker compose logs -f
 
 ---
 
-# 🌐 Access the Application
+#   Access the Application
 
 Open:
 
@@ -503,7 +503,7 @@ http://YOUR_EC2_PUBLIC_IP
 
 ---
 
-# 👤 First-Time Admin Setup
+#  First-Time Admin Setup
 
 ## Open MySQL
 
@@ -523,7 +523,7 @@ WHERE email='your.email@gmail.com';
 
 ---
 
-# 🔧 Useful Docker Commands
+#  Useful Docker Commands
 
 ## Start Containers
 
@@ -565,7 +565,7 @@ docker system prune -f
 
 ---
 
-# ❌ Troubleshooting
+#   Troubleshooting
 
 ## Backend Restarting
 
@@ -606,7 +606,7 @@ sudo swapon /swapfile
 
 ---
 
-# 🎉 Deployment Complete
+#  Deployment Complete
 
 Your Cafe Management System is now running on AWS EC2 using Docker.
 
